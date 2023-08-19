@@ -26,6 +26,9 @@ def group_post_save_handler(sender, **kwargs):
     created = kwargs.pop('created')
     group = kwargs.pop('instance')
     if created:
+        if group.auth_group is not None:
+            return
+
         # Create authentication group
         auth_group = Group(name=get_auth_group_name(group))
         auth_group.save()
@@ -40,7 +43,28 @@ def group_post_save_handler(sender, **kwargs):
             member.role = Role.objects.get(is_owner=True)
             member.save()
             # Add user to authentication group as well
-            auth_group.user_set.add(user)
+            group.auth_group.user_set.add(user)
+    else:
+        # rename auth_group if necessary
+        if group.auth_group:
+            group.auth_group.name = group.name
+            group.auth_group.save()
+
+
+# will be called when underlying authentication model creates a group or it is
+# created manually in the slot above
+@receiver(post_save, sender=Group)
+def auth_group_post_save_handler(sender, **kwargs):
+    created = kwargs.pop('created')
+    group = kwargs.pop('instance')
+    if created:
+        # at this moment we may have the corresponding Dojo_Group instance if
+        # auth_group was created in the slot above. otherwize, there is no
+        # Dojo_Group yet and we need to create one.
+        try:
+            Dojo_Group.objects.get(name=group.name)
+        except:
+            Dojo_Group.objects.create(name=group.name, auth_group=group)
 
 
 @receiver(post_delete, sender=Dojo_Group)
@@ -50,7 +74,19 @@ def group_post_delete_handler(sender, **kwargs):
     if group.auth_group:
         group.auth_group.delete()
 
-
+@receiver(post_delete, sender=Group)
+def auth_group_post_delete_handler(sender, **kwargs):
+    group = kwargs.pop('instance')
+    # DefectDojo group doesn't get deleted automatically when underlying group
+    # is deleted. we need to avoid post_delete recursion.
+    try:
+        dgroup = Dojo_Group.objects.get(name=group.name)
+        dgroup.auth_group = None
+        dgroup.save()
+        dgroup.delete()
+    except:
+        pass
+    
 @receiver(post_save, sender=Dojo_Group_Member)
 def group_member_post_save_handler(sender, **kwargs):
     created = kwargs.pop('created')

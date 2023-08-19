@@ -6,6 +6,9 @@ from dojo import __version__
 import environ
 from netaddr import IPNetwork, IPSet
 import json
+# LDAP
+import ldap
+from django_auth_ldap.config import LDAPSearch, PosixGroupType
 
 # See https://documentation.defectdojo.com/getting_started/configuration/ for options
 # how to tune the configuration to your needs.
@@ -263,13 +266,22 @@ env = environ.Env(
     DD_API_TOKENS_ENABLED=(bool, True),
     # You can set extra Jira headers by suppling a dictionary in header: value format (pass as env var like "headr_name=value,another_header=anohter_value")
     DD_ADDITIONAL_HEADERS=(dict, {}),
-    # Set fields used by the hashcode generator for deduplication, via en env variable that contains a JSON string
+        # Set fields used by the hashcode generator for deduplication, via en env variable that contains a JSON string
     DD_HASHCODE_FIELDS_PER_SCANNER=(str, ''),
     # Set deduplication algorithms per parser, via en env variable that contains a JSON string
     DD_DEDUPLICATION_ALGORITHM_PER_PARSER=(str, ''),
     # Dictates whether cloud banner is created or not
     DD_CREATE_CLOUD_BANNER=(bool, True)
-)
+    # LDAP
+    DD_LDAP_SERVER_URI=(str, "ldaps://ldap1.soramitsu.co.jp:636, ldaps://ldap2.soramitsu.co.jp:636, ldaps://ldap3.soramitsu.co.jp:636"),
+    DD_LDAP_BIND_DN=(str, ''),
+    DD_LDAP_BIND_PASSWORD=(str, ''),
+    DD_LDAP_USER_SEARCH_BASE=(str, 'dc=ldap,dc=soramitsu,dc=co,dc=jp'),
+    DD_LDAP_USER_SEARCH_FILTER=(str, '(uid=%(user)s)'),
+    DD_LDAP_GROUP_SEARCH_BASE=(str, ''),
+    DD_LDAP_GROUP_SEARCH_FILTER=(str, '(objectClass=posixGroup)'),
+    DD_LDAP_ADMIN=(str,''),
+)   
 
 
 def generate_url(scheme, double_slashes, user, password, host, port, path, params):
@@ -347,6 +359,40 @@ DISABLE_ALERT_COUNTER = env("DD_DISABLE_ALERT_COUNTER")
 MAX_ALERTS_PER_USER = env("DD_MAX_ALERTS_PER_USER")
 
 TAG_PREFETCHING = env('DD_TAG_PREFETCHING')
+
+# ------------------------------------------------------------------------------
+# LDAP
+# ------------------------------------------------------------------------------
+
+AUTH_LDAP_SERVER_URI = env('DD_LDAP_SERVER_URI')
+AUTH_LDAP_BIND_DN = env('DD_LDAP_BIND_DN')
+AUTH_LDAP_BIND_PASSWORD = env('DD_LDAP_BIND_PASSWORD')
+AUTH_LDAP_USER_SEARCH = LDAPSearch(
+    env('DD_LDAP_USER_SEARCH_BASE'), ldap.SCOPE_SUBTREE, env('DD_LDAP_USER_SEARCH_FILTER')
+)
+
+AUTH_LDAP_GLOBAL_OPTIONS = {ldap.OPT_X_TLS_REQUIRE_CERT: ldap.OPT_X_TLS_NEVER}
+
+AUTH_LDAP_USER_ATTR_MAP = {
+    "uid": "uid",
+    "mail": "mail",
+    "name": "cn",
+}
+
+AUTH_LDAP_GROUP_SEARCH = LDAPSearch(
+    env('DD_LDAP_GROUP_SEARCH_BASE'), ldap.SCOPE_SUBTREE, env('DD_LDAP_GROUP_SEARCH_FILTER')
+)
+
+AUTH_LDAP_GROUP_TYPE = PosixGroupType(name_attr="cn")
+
+AUTH_LDAP_USER_FLAGS_BY_GROUP = {
+    "is_superuser": env('DD_LDAP_ADMIN'),
+}
+
+AUTH_LDAP_ALWAYS_UPDATE_USER = True
+# AUTH_LDAP_FIND_GROUP_PERMS = True
+# AUTH_LDAP_CACHE_TIMEOUT = 3600
+AUTH_LDAP_MIRROR_GROUPS = True
 
 # ------------------------------------------------------------------------------
 # DATABASE
@@ -456,6 +502,7 @@ LOGIN_URL = env('DD_LOGIN_URL')
 
 # These are the individidual modules supported by social-auth
 AUTHENTICATION_BACKENDS = (
+    'django_auth_ldap.backend.LDAPBackend',
     'social_core.backends.auth0.Auth0OAuth2',
     'social_core.backends.google.GoogleOAuth2',
     'dojo.okta.OktaOAuth2',
@@ -1254,6 +1301,7 @@ HASHCODE_FIELDS_PER_SCANNER = {
     'NeuVector (compliance)': ['title', 'vuln_id_from_tool', 'description'],
     'Wpscan': ['title', 'description', 'severity'],
     'Codechecker Report native': ['unique_id_from_tool'],
+    'Deepsecrets Scan': ['title', 'file_path'],
     'Popeye Scan': ['title', 'description'],
     'Wazuh Scan': ['title'],
     'Nuclei Scan': ['title', 'cwe', 'severity'],
@@ -1448,6 +1496,7 @@ DEDUPLICATION_ALGORITHM_PER_PARSER = {
     'NeuVector (REST)': DEDUPE_ALGO_HASH_CODE,
     'NeuVector (compliance)': DEDUPE_ALGO_HASH_CODE,
     'Wpscan': DEDUPE_ALGO_HASH_CODE,
+    'Deepsecrets Scan': DEDUPE_ALGO_HASH_CODE,
     'Popeye Scan': DEDUPE_ALGO_HASH_CODE,
     'Nuclei Scan': DEDUPE_ALGO_HASH_CODE,
 }
@@ -1578,6 +1627,11 @@ LOGGING = {
         },
         'titlecase': {
             # The titlecase library is too verbose in it's logging, reducing the verbosity in our logs.
+            'handlers': [r'%s' % LOGGING_HANDLER],
+            'level': '%s' % LOG_LEVEL,
+            'propagate': False,
+        },
+        'django_auth_ldap': {
             'handlers': [r'%s' % LOGGING_HANDLER],
             'level': '%s' % LOG_LEVEL,
             'propagate': False,

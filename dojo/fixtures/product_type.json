@@ -1,11 +1,27 @@
 [
   {
     "fields": {
-      "name": "Research and Development",
-      "critical_product": true
+      "name": "Prod",
+      "critical_product": true,
+      "key_product": true
     },
     "model": "dojo.product_type",
     "pk": 1
+  },
+  {
+    "fields": {
+      "name": "Dev",
+      "key_product": true
+    },
+    "model": "dojo.product_type",
+    "pk": 2
+  },
+  {
+    "fields": {
+      "name": "Test"
+    },
+    "model": "dojo.product_type",
+    "pk": 3
   },
   {
     "fields": {
@@ -15,5 +31,23 @@
     },
     "model": "dojo.product_type_member",
     "pk": 1
+  },
+  {
+    "fields": {
+      "product_type": 2,
+      "user": 1,
+      "role": 4
+    },
+    "model": "dojo.product_type_member",
+    "pk": 2
+  },
+  {
+    "fields": {
+      "product_type": 3,
+      "user": 1,
+      "role": 4
+    },
+    "model": "dojo.product_type_member",
+    "pk": 3
   }
 ]

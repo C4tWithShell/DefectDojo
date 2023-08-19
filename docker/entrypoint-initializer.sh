@@ -16,7 +16,6 @@ initialize_data()
 create_announcement_banner() 
 {
 # Load the announcement banner
-if [ -z "$DD_CREATE_CLOUD_BANNER" ]; then
 echo "Creating Announcement Banner"
 cat <<EOD | python3 manage.py shell
 from dojo.models import Announcement, UserAnnouncement, Dojo_User
@@ -79,7 +78,6 @@ then
     echo "Admin password: Initialization detected that the admin user ${DD_ADMIN_USER} already exists in your database."
     echo "If you don't remember the ${DD_ADMIN_USER} password, you can create a new superuser with:"
     echo "$ docker-compose exec uwsgi /bin/bash -c 'python manage.py createsuperuser'"
-    create_announcement_banner
     initialize_data
     exit
 fi
@@ -133,6 +131,6 @@ EOD
   echo "Migration of textquestions for surveys"
   python3 manage.py migrate_textquestions
 
-  create_announcement_banner
   initialize_data
+
 fi

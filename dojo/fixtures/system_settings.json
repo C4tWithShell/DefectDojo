@@ -12,7 +12,9 @@
     "product_grade_b": 80,
     "product_grade_c": 70,
     "product_grade_d": 60,
-    "product_grade_f": 59
+    "product_grade_f": 59,
+    "default_group": null,
+    "default_group_role": 5
   }
 }
 ]
