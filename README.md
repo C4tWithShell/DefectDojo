@@ -42,7 +42,7 @@ Original images were modify to support LDAP
 
 Image was containerized:
 ```
-docker build . -t docker.soramitsu.co.jp/build-tools/defectdojo-django:2.25.1 -t docker.soramitsu.co.jp/build-tools/defectdojo-django:latest -f Dockerfile.django
+docker build . -t docker.soramitsu.co.jp/build-tools/defectdojo-django:2.27.1 -t docker.soramitsu.co.jp/build-tools/defectdojo-django:latest -f Dockerfile.django
 docker push docker.soramitsu.co.jp/build-tools/defectdojo-django:2.25.1
 
 docker build . -t docker.soramitsu.co.jp/build-tools/defectdojo-nginx:2.25.1 -t docker.soramitsu.co.jp/build-tools/defectdojo-nginx:latest -f Dockerfile.nginx

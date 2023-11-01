@@ -16,9 +16,11 @@ class AwsSecurityHubParser(object):
 
     def get_findings(self, filehandle, test):
         tree = json.load(filehandle)
+        if not isinstance(tree, dict):
+            raise ValueError("Incorrect Security Hub report format")
         return self.get_items(tree, test)
 
-    def get_items(self, tree, test):
+    def get_items(self, tree: dict, test):
         items = {}
         # DefectDojo/django-DefectDojo/issues/2780
         findings = tree.get("Findings", tree.get("findings", None))
@@ -34,21 +36,26 @@ class AwsSecurityHubParser(object):
         return list(items.values())
 
 
-def get_item(finding, test):
+def get_item(finding: dict, test):
     aws_scanner_type = finding.get("ProductFields", {}).get("aws/securityhub/ProductName", "")
     finding_id = finding.get("Id", "")
     title = finding.get("Title", "")
     severity = finding.get("Severity", {}).get("Label", "INFORMATIONAL").title()
-    cve = ""
+    mitigation = ""
+    unsaved_vulnerability_ids = []
     if aws_scanner_type == "Inspector":
-        vulnerabilities = finding.get("Vulnerabilities", "")
-        cve = vulnerabilities[0]["Id"]
-        vulnerablepackages = vulnerabilities[0].get("VulnerablePackages", "")
-        try:
-            mitigation = vulnerablepackages[0]["Remediation"]
-        except KeyError:
-            mitigation = "None Provided"
-        description = "This is a Inspector Finding \n" + cve + "\n" + finding.get("Description", "")
+        description = f"This is an Inspector Finding\n{finding.get('Description', '')}"
+        vulnerabilities = finding.get("Vulnerabilities", [])
+        for vulnerability in vulnerabilities:
+            # Save the CVE if it is present
+            if cve := vulnerability.get("Id"):
+                unsaved_vulnerability_ids.append(cve)
+            # Add information about the vulnerable packages to the description and mitigation
+            vulnerable_packages = vulnerability.get("VulnerablePackages", [])
+            for package in vulnerable_packages:
+                mitigation += f"- Update {package.get('Name', '')}-{package.get('Version', '')}\n"
+                if remediation := package.get("Remediation"):
+                    mitigation += f"\t- {remediation}\n"
 
         if finding.get("ProductFields", {}).get("aws/inspector/FindingStatus", "ACTIVE") == "ACTIVE":
             mitigated = None
@@ -60,7 +67,7 @@ def get_item(finding, test):
             if finding.get("LastObservedAt", None):
                 try:
                     mitigated = datetime.strptime(finding.get("LastObservedAt"), "%Y-%m-%dT%H:%M:%S.%fZ")
-                except:
+                except Exception:
                     mitigated = datetime.strptime(finding.get("LastObservedAt"), "%Y-%m-%dT%H:%M:%fZ")
             else:
                 mitigated = datetime.utcnow()
@@ -75,7 +82,7 @@ def get_item(finding, test):
             if finding.get("LastObservedAt", None):
                 try:
                     mitigated = datetime.strptime(finding.get("LastObservedAt"), "%Y-%m-%dT%H:%M:%S.%fZ")
-                except:
+                except Exception:
                     mitigated = datetime.strptime(finding.get("LastObservedAt"), "%Y-%m-%dT%H:%M:%fZ")
             else:
                 mitigated = datetime.utcnow()
@@ -89,19 +96,22 @@ def get_item(finding, test):
     references = finding.get("Remediation", {}).get("Recommendation", {}).get("Url")
     false_p = False
 
-    finding = Finding(title=f"{title} - Resource: {resource_id}",
-                      test=test,
-                      description=description,
-                      mitigation=mitigation,
-                      references=references,
-                      severity=severity,
-                      impact=f"Resource: {resource_id}",
-                      active=active,
-                      verified=False,
-                      false_p=false_p,
-                      unique_id_from_tool=finding_id,
-                      mitigated=mitigated,
-                      is_mitigated=is_Mitigated,
-                      cve=cve,
-                      )
+    finding = Finding(
+        title=f"{title} - Resource: {resource_id}",
+        test=test,
+        description=description,
+        mitigation=mitigation,
+        references=references,
+        severity=severity,
+        impact=f"Resource: {resource_id}",
+        active=active,
+        verified=False,
+        false_p=false_p,
+        unique_id_from_tool=finding_id,
+        mitigated=mitigated,
+        is_mitigated=is_Mitigated,
+    )
+    # Add the unsaved vulnerability ids
+    finding.unsaved_vulnerability_ids = unsaved_vulnerability_ids
+
     return finding
