@@ -271,7 +271,7 @@ env = environ.Env(
     # Set deduplication algorithms per parser, via en env variable that contains a JSON string
     DD_DEDUPLICATION_ALGORITHM_PER_PARSER=(str, ''),
     # Dictates whether cloud banner is created or not
-    DD_CREATE_CLOUD_BANNER=(bool, True)
+    DD_CREATE_CLOUD_BANNER=(bool, True),
     # LDAP
     DD_LDAP_SERVER_URI=(str, "ldaps://ldap1.soramitsu.co.jp:636, ldaps://ldap2.soramitsu.co.jp:636, ldaps://ldap3.soramitsu.co.jp:636"),
     DD_LDAP_BIND_DN=(str, ''),

@@ -37,3 +37,14 @@ Original images were modify to support LDAP
   - `DD_LDAP_BIND_PASSWORD`: password that are needed to connect to the LDAP servers. Empty by default
   - `DD_LDAP_GROUP_SEARCH_BASE`: should be set to the ou=defectdojo,...
   - `DD_LDAP_ADMIN`: group(cn) within `DD_LDAP_GROUP_SEARCH_BASE`, will set users to admin
+
+### Docker Hub
+
+Image was containerized:
+```
+docker build . -t docker.soramitsu.co.jp/build-tools/defectdojo-django:2.25.1 -t docker.soramitsu.co.jp/build-tools/defectdojo-django:latest -f Dockerfile.django
+docker push docker.soramitsu.co.jp/build-tools/defectdojo-django:2.25.1
+
+docker build . -t docker.soramitsu.co.jp/build-tools/defectdojo-nginx:2.25.1 -t docker.soramitsu.co.jp/build-tools/defectdojo-nginx:latest -f Dockerfile.nginx
+docker push docker.soramitsu.co.jp/build-tools/defectdojo-nginx:2.25.1
+```
