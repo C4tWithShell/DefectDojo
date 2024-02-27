@@ -2,6 +2,7 @@ import os
 import re
 from datetime import datetime, date
 import pickle
+import warnings
 from crispy_forms.bootstrap import InlineRadios, InlineCheckboxes
 from crispy_forms.helper import FormHelper
 from crispy_forms.layout import Layout
@@ -18,6 +19,7 @@ from django.utils.dates import MONTHS
 from django.utils.safestring import mark_safe
 from django.utils import timezone
 from django.utils.translation import gettext_lazy as _
+from polymorphic.base import ManagerInheritanceWarning
 import tagulous
 
 from dojo.endpoint.utils import endpoint_get_or_create, endpoint_filter, \
@@ -49,6 +51,7 @@ from dojo.finding.queries import get_authorized_findings
 from dojo.user.queries import get_authorized_users_for_product_and_product_type, get_authorized_users
 from dojo.user.utils import get_configuration_permissions_fields
 from dojo.group.queries import get_authorized_groups, get_group_member_roles
+import dojo.jira_link.helper as jira_helper
 
 logger = logging.getLogger(__name__)
 
@@ -111,7 +114,6 @@ class MonthYearWidget(Widget):
                 if match:
                     year_val,
                     month_val,
-                    day_val = [int(v) for v in match.groups()]
 
         output = []
 
@@ -262,6 +264,12 @@ class ProductForm(forms.ModelForm):
     def __init__(self, *args, **kwargs):
         super(ProductForm, self).__init__(*args, **kwargs)
         self.fields['prod_type'].queryset = get_authorized_product_types(Permissions.Product_Type_Add_Product)
+
+        # if this product has findings being asynchronously updated, disable the sla config field
+        if self.instance.async_updating:
+            self.fields['sla_configuration'].disabled = True
+            self.fields['sla_configuration'].widget.attrs['message'] = 'Finding SLA expiration dates are currently being recalculated. ' + \
+                                                                       'This field cannot be changed until the calculation is complete.'
 
     class Meta:
         model = Product
@@ -471,6 +479,12 @@ class ImportScanForm(forms.Form):
                                             label="Close old findings within this product",
                                             required=False,
                                             initial=False)
+    apply_tags_to_findings = forms.BooleanField(
+        help_text="If set to True, the tags will be applied to the findings",
+        label="Apply Tags to Findings",
+        required=False,
+        initial=False
+    )
 
     if is_finding_groups_enabled():
         group_by = forms.ChoiceField(required=False, choices=Finding_Group.GROUP_BY_OPTIONS, help_text='Choose an option to automatically group new findings by the chosen option.')
@@ -557,6 +571,12 @@ class ReImportScanForm(forms.Form):
     api_scan_configuration = forms.ModelChoiceField(Product_API_Scan_Configuration.objects, required=False, label='API Scan Configuration')
     service = forms.CharField(max_length=200, required=False, help_text="A service is a self-contained piece of functionality within a Product. This is an optional field which is used in deduplication of findings when set.")
     source_code_management_uri = forms.URLField(max_length=600, required=False, help_text="Resource link to source code")
+    apply_tags_to_findings = forms.BooleanField(
+        help_text="If set to True, the tags will be applied to the findings",
+        label="Apply Tags to Findings",
+        required=False,
+        initial=False
+    )
 
     if is_finding_groups_enabled():
         group_by = forms.ChoiceField(required=False, choices=Finding_Group.GROUP_BY_OPTIONS, help_text='Choose an option to automatically group new findings by the chosen option')
@@ -661,7 +681,7 @@ class MergeFindings(forms.ModelForm):
         help_text="The action to take on the merged finding. Set the findings to inactive or delete the findings.")
 
     def __init__(self, *args, **kwargs):
-        finding = kwargs.pop('finding')
+        _ = kwargs.pop('finding')
         findings = kwargs.pop('findings')
         super(MergeFindings, self).__init__(*args, **kwargs)
 
@@ -1061,7 +1081,7 @@ class AdHocFindingForm(forms.ModelForm):
     # the only reliable way without hacking internal fields to get predicatble ordering is to make it explicit
     field_order = ('title', 'date', 'cwe', 'vulnerability_ids', 'severity', 'cvssv3', 'description', 'mitigation', 'impact', 'request', 'response', 'steps_to_reproduce',
                    'severity_justification', 'endpoints', 'endpoints_to_add', 'references', 'active', 'verified', 'false_p', 'duplicate', 'out_of_scope',
-                   'risk_accepted', 'under_defect_review', 'sla_start_date')
+                   'risk_accepted', 'under_defect_review', 'sla_start_date', 'sla_expiration_date')
 
     def __init__(self, *args, **kwargs):
         req_resp = kwargs.pop('req_resp')
@@ -1101,7 +1121,8 @@ class AdHocFindingForm(forms.ModelForm):
     class Meta:
         model = Finding
         exclude = ('reporter', 'url', 'numerical_severity', 'under_review', 'reviewers', 'cve', 'inherited_tags',
-                   'review_requested_by', 'is_mitigated', 'jira_creation', 'jira_change', 'endpoint_status', 'sla_start_date')
+                   'review_requested_by', 'is_mitigated', 'jira_creation', 'jira_change', 'endpoints', 'sla_start_date',
+                   'sla_expiration_date')
 
 
 class PromoteFindingForm(forms.ModelForm):
@@ -1127,9 +1148,9 @@ class PromoteFindingForm(forms.ModelForm):
     references = forms.CharField(widget=forms.Textarea, required=False)
 
     # the onyl reliable way without hacking internal fields to get predicatble ordering is to make it explicit
-    field_order = ('title', 'group', 'date', 'sla_start_date', 'cwe', 'vulnerability_ids', 'severity', 'cvssv3', 'cvssv3_score', 'description', 'mitigation', 'impact',
-                   'request', 'response', 'steps_to_reproduce', 'severity_justification', 'endpoints', 'endpoints_to_add', 'references',
-                   'active', 'mitigated', 'mitigated_by', 'verified', 'false_p', 'duplicate',
+    field_order = ('title', 'group', 'date', 'sla_start_date', 'sla_expiration_date', 'cwe', 'vulnerability_ids', 'severity', 'cvssv3',
+                   'cvssv3_score', 'description', 'mitigation', 'impact', 'request', 'response', 'steps_to_reproduce', 'severity_justification',
+                   'endpoints', 'endpoints_to_add', 'references', 'active', 'mitigated', 'mitigated_by', 'verified', 'false_p', 'duplicate',
                    'out_of_scope', 'risk_accept', 'under_defect_review')
 
     def __init__(self, *args, **kwargs):
@@ -1199,9 +1220,9 @@ class FindingForm(forms.ModelForm):
             'invalid_choice': EFFORT_FOR_FIXING_INVALID_CHOICE})
 
     # the only reliable way without hacking internal fields to get predicatble ordering is to make it explicit
-    field_order = ('title', 'group', 'date', 'sla_start_date', 'cwe', 'vulnerability_ids', 'severity', 'cvssv3', 'cvssv3_score', 'description', 'mitigation', 'impact',
-                   'request', 'response', 'steps_to_reproduce', 'severity_justification', 'endpoints', 'endpoints_to_add', 'references',
-                   'active', 'mitigated', 'mitigated_by', 'verified', 'false_p', 'duplicate',
+    field_order = ('title', 'group', 'date', 'sla_start_date', 'sla_expiration_date', 'cwe', 'vulnerability_ids', 'severity', 'cvssv3',
+                   'cvssv3_score', 'description', 'mitigation', 'impact', 'request', 'response', 'steps_to_reproduce', 'severity_justification',
+                   'endpoints', 'endpoints_to_add', 'references', 'active', 'mitigated', 'mitigated_by', 'verified', 'false_p', 'duplicate',
                    'out_of_scope', 'risk_accept', 'under_defect_review')
 
     def __init__(self, *args, **kwargs):
@@ -1239,6 +1260,7 @@ class FindingForm(forms.ModelForm):
             self.fields['duplicate'].help_text = "You can mark findings as duplicate only from the view finding page."
 
         self.fields['sla_start_date'].disabled = True
+        self.fields['sla_expiration_date'].disabled = True
 
         if self.can_edit_mitigated_data:
             if hasattr(self, 'instance'):
@@ -2267,7 +2289,8 @@ class JIRAForm(forms.ModelForm):
         form_data = self.cleaned_data
 
         try:
-            jira = jira_helper.get_jira_connection_raw(form_data['url'], form_data['username'], form_data['password'])
+            # Attempt to validate the credentials before moving forward
+            _ = jira_helper.get_jira_connection_raw(form_data['url'], form_data['username'], form_data['password'])
             logger.debug('valid JIRA config!')
         except Exception as e:
             # form only used by admins, so we can show full error message using str(e) which can help debug any problems
@@ -2294,7 +2317,8 @@ class ExpressJIRAForm(forms.ModelForm):
         form_data = self.cleaned_data
 
         try:
-            jira = jira_helper.get_jira_connection_raw(form_data['url'], form_data['username'], form_data['password'],)
+            # Attempt to validate the credentials before moving forward
+            _ = jira_helper.get_jira_connection_raw(form_data['url'], form_data['username'], form_data['password'],)
             logger.debug('valid JIRA config!')
         except Exception as e:
             # form only used by admins, so we can show full error message using str(e) which can help debug any problems
@@ -2366,6 +2390,23 @@ class ToolTypeForm(forms.ModelForm):
         model = Tool_Type
         exclude = ['product']
 
+    def __init__(self, *args, **kwargs):
+        instance = kwargs.get('instance', None)
+        self.newly_created = True
+        if instance is not None:
+            self.newly_created = instance.pk is None
+        super().__init__(*args, **kwargs)
+
+    def clean(self):
+        form_data = self.cleaned_data
+        if self.newly_created:
+            name = form_data.get("name")
+            # Make sure this will not create a duplicate test type
+            if Tool_Type.objects.filter(name=name).count() > 0:
+                raise forms.ValidationError('A Tool Type with the name already exists')
+
+        return form_data
+
 
 class RegulationForm(forms.ModelForm):
     class Meta:
@@ -2422,6 +2463,22 @@ class ToolConfigForm(forms.ModelForm):
 
 
 class SLAConfigForm(forms.ModelForm):
+    def __init__(self, *args, **kwargs):
+        super(SLAConfigForm, self).__init__(*args, **kwargs)
+
+        # if this sla config has findings being asynchronously updated, disable the days by severity fields
+        if self.instance.async_updating:
+            msg = 'Finding SLA expiration dates are currently being recalculated. ' + \
+                  'This field cannot be changed until the calculation is complete.'
+            self.fields['critical'].disabled = True
+            self.fields['critical'].widget.attrs['message'] = msg
+            self.fields['high'].disabled = True
+            self.fields['high'].widget.attrs['message'] = msg
+            self.fields['medium'].disabled = True
+            self.fields['medium'].widget.attrs['message'] = msg
+            self.fields['low'].disabled = True
+            self.fields['low'].widget.attrs['message'] = msg
+
     class Meta:
         model = SLA_Configuration
         fields = ['name', 'description', 'critical', 'high', 'medium', 'low']
@@ -2592,11 +2649,12 @@ class ProductNotificationsForm(forms.ModelForm):
             self.initial['test_added'] = ''
             self.initial['scan_added'] = ''
             self.initial['sla_breach'] = ''
+            self.initial['sla_breach_combined'] = ''
             self.initial['risk_acceptance_expiration'] = ''
 
     class Meta:
         model = Notifications
-        fields = ['engagement_added', 'close_engagement', 'test_added', 'scan_added', 'sla_breach', 'risk_acceptance_expiration']
+        fields = ['engagement_added', 'close_engagement', 'test_added', 'scan_added', 'sla_breach', 'sla_breach_combined', 'risk_acceptance_expiration']
 
 
 class AjaxChoiceField(forms.ChoiceField):
@@ -2804,8 +2862,7 @@ class JIRAFindingForm(forms.Form):
 
     def clean(self):
         logger.debug('jform clean')
-        import dojo.jira_link.helper as jira_helper
-        cleaned_data = super(JIRAFindingForm, self).clean()
+        super(JIRAFindingForm, self).clean()
         jira_issue_key_new = self.cleaned_data.get('jira_issue')
         finding = self.instance
         jira_project = self.jira_project
@@ -2932,16 +2989,9 @@ class LoginBanner(forms.Form):
 
 
 class AnnouncementCreateForm(forms.ModelForm):
-    dismissable = forms.BooleanField(
-        label=_('Dismissable?'),
-        initial=False,
-        required=False,
-        help_text=_('Ticking this box allows users to dismiss the current announcement')
-    )
-
     class Meta:
         model = Announcement
-        fields = ['message', 'style']
+        fields = "__all__"
 
 
 class AnnouncementRemoveForm(AnnouncementCreateForm):
@@ -3015,8 +3065,6 @@ class TextQuestionForm(QuestionForm):
             initial=initial_answer,
         )
 
-        answer = self.fields['answer']
-
     def save(self):
         if not self.is_valid():
             raise forms.ValidationError('form is not valid')
@@ -3089,7 +3137,7 @@ class ChoiceQuestionForm(QuestionForm):
         real_answer = self.cleaned_data.get('answer')
 
         # for single choice questions, the selected answer is a single string
-        if type(real_answer) is not list:
+        if not isinstance(real_answer, list):
             real_answer = [real_answer]
         return real_answer
 
@@ -3205,16 +3253,17 @@ class CreateQuestionnaireForm(forms.ModelForm):
         exclude = ['questions']
 
 
-class EditQuestionnaireQuestionsForm(forms.ModelForm):
-    questions = forms.ModelMultipleChoiceField(
-        Question.objects.all(),
-        required=True,
-        help_text="Select questions to include on this questionnaire.  Field can be used to search available questions.",
-        widget=MultipleSelectWithPop(attrs={'size': '11'}))
+with warnings.catch_warnings(action="ignore", category=ManagerInheritanceWarning):
+    class EditQuestionnaireQuestionsForm(forms.ModelForm):
+        questions = forms.ModelMultipleChoiceField(
+            Question.polymorphic.all(),
+            required=True,
+            help_text="Select questions to include on this questionnaire.  Field can be used to search available questions.",
+            widget=MultipleSelectWithPop(attrs={'size': '11'}))
 
-    class Meta:
-        model = Engagement_Survey
-        exclude = ['name', 'description', 'active']
+        class Meta:
+            model = Engagement_Survey
+            exclude = ['name', 'description', 'active']
 
 
 class CreateQuestionForm(forms.Form):

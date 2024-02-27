@@ -36,9 +36,9 @@ def delete_engagement_survey(request, eid, sid):
     if request.method == 'POST':
         form = Delete_Questionnaire_Form(request.POST, instance=survey)
         if form.is_valid():
-            answers = Answer.objects.filter(
+            answers = Answer.polymorphic.filter(
                 question__in=[
-                    question.id for question in survey.survey.questions.all()],
+                    question.id for question in Question.polymorphic.filter(engagement_survey=survey.survey)],
                 answered_survey=survey)
             for answer in answers:
                 answer.delete()
@@ -71,7 +71,6 @@ def delete_engagement_survey(request, eid, sid):
 def answer_questionnaire(request, eid, sid):
     survey = get_object_or_404(Answered_Survey, id=sid)
     engagement = get_object_or_404(Engagement, id=eid)
-    prod = engagement.product
     system_settings = System_Settings.objects.all()[0]
 
     if not system_settings.allow_anonymous_survey_repsonse:
@@ -96,7 +95,7 @@ def answer_questionnaire(request, eid, sid):
                 prefix=str(q.id),
                 answered_survey=survey,
                 question=q, form_tag=False)
-            for q in survey.survey.questions.all()]
+            for q in Question.polymorphic.filter(engagement_survey=survey.survey)]
 
         questions_are_valid = []
 
@@ -185,7 +184,7 @@ def get_answered_questions(survey=None, read_only=False):
             answered_survey=survey,
             question=q,
             form_tag=False)
-        for q in survey.survey.questions.all()]
+        for q in Question.polymorphic.filter(engagement_survey=survey.survey)]
 
     if read_only:
         for question in questions:
@@ -398,13 +397,11 @@ def edit_questionnaire_questions(request, sid):
 
 @user_is_configuration_authorized('dojo.view_engagement_survey')
 def questionnaire(request):
-    user = request.user
     surveys = Engagement_Survey.objects.all()
     surveys = QuestionnaireFilter(request.GET, queryset=surveys)
     paged_surveys = get_page_items(request, surveys.qs, 25)
     general_surveys = General_Survey.objects.all()
     for survey in general_surveys:
-        survey_exp = survey.expiration
         if survey.expiration < tz.now():
             survey.delete()
 
@@ -419,7 +416,7 @@ def questionnaire(request):
 
 @user_is_configuration_authorized('dojo.view_question')
 def questions(request):
-    questions = Question.objects.all()
+    questions = Question.polymorphic.all()
     questions = QuestionFilter(request.GET, queryset=questions)
     paged_questions = get_page_items(request, questions.qs, 25)
     add_breadcrumb(title="Questions", top_level=False, request=request)
@@ -503,8 +500,10 @@ def create_question(request):
 
 @user_is_configuration_authorized('dojo.change_question')
 def edit_question(request, qid):
-    error = False
-    question = get_object_or_404(Question, id=qid)
+    try:
+        question = Question.polymorphic.get(id=qid)
+    except Question.DoesNotExist:
+        return Http404()
     survey = Engagement_Survey.objects.filter(questions__in=[question])
     reverted = False
     answered = []
@@ -656,7 +655,7 @@ def delete_empty_questionnaire(request, esid):
         form = Delete_Questionnaire_Form(request.POST, instance=survey)
         if form.is_valid():
             answers = Answer.objects.filter(
-                question__in=[question.id for question in survey.survey.questions.all()],
+                question__in=[question.id for question in Question.polymorphic.filter(engagement_survey=survey.survey)],
                 answered_survey=survey)
             for answer in answers:
                 answer.delete()
@@ -744,7 +743,7 @@ def answer_empty_survey(request, esid):
             engagement_survey=engagement_survey,
             question=q,
             form_tag=False)
-        for q in engagement_survey.questions.all()
+        for q in Question.polymorphic.filter(engagement_survey=engagement_survey)
     ]
 
     if request.method == 'POST':
@@ -757,7 +756,7 @@ def answer_empty_survey(request, esid):
                 answered_survey=survey,
                 question=q,
                 form_tag=False)
-            for q in survey.survey.questions.all()
+            for q in Question.polymorphic.filter(engagement_survey=survey.survey)
         ]
 
         questions_are_valid = []
