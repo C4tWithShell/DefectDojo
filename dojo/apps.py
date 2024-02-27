@@ -74,6 +74,7 @@ class DojoAppConfig(AppConfig):
         import dojo.announcement.signals  # noqa
         import dojo.product.signals  # noqa
         import dojo.test.signals  # noqa
+        import dojo.sla_config.helpers  # noqa
 
 def get_model_fields_with_extra(model, extra_fields=()):
     return get_model_fields(get_model_default_fields(model), extra_fields)

@@ -76,6 +76,7 @@ COPY \
   docker/entrypoint-initializer.sh \
   docker/entrypoint-uwsgi.sh \
   docker/wait-for-it.sh \
+  docker/secret-file-loader.sh \
   docker/certs/* \
   /
 COPY wsgi.py manage.py ./
