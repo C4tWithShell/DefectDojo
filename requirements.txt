@@ -81,5 +81,5 @@ netaddr==0.10.1
 vulners==2.1.5
 fontawesomefree==6.5.1
 # LDAP
-python-ldap==3.4.3
-django-auth-ldap==4.5.0
+python-ldap==3.4.4
+django-auth-ldap==4.8.0
