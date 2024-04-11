@@ -42,17 +42,17 @@ Original images were modify to support LDAP
 
 Image was containerized:
 ```
-docker build . -t docker.soramitsu.co.jp/build-tools/defectdojo-django:2.31.4 -t docker.soramitsu.co.jp/build-tools/defectdojo-django:latest -f Dockerfile.django
-docker push docker.soramitsu.co.jp/build-tools/defectdojo-django:2.31.4
+docker build . -t docker.soramitsu.co.jp/build-tools/defectdojo-django:2.33.1 -t docker.soramitsu.co.jp/build-tools/defectdojo-django:latest -f Dockerfile.django
+docker push docker.soramitsu.co.jp/build-tools/defectdojo-django:2.33.1
 
-docker build . -t docker.soramitsu.co.jp/build-tools/defectdojo-nginx:2.31.4 -t docker.soramitsu.co.jp/build-tools/defectdojo-nginx:latest -f Dockerfile.nginx
-docker push docker.soramitsu.co.jp/build-tools/defectdojo-nginx:2.31.4
+docker build . -t docker.soramitsu.co.jp/build-tools/defectdojo-nginx:2.33.1 -t docker.soramitsu.co.jp/build-tools/defectdojo-nginx:latest -f Dockerfile.nginx
+docker push docker.soramitsu.co.jp/build-tools/defectdojo-nginx:2.33.1
 ```
 
 
 Alternative commands to build:
 ```
-docker buildx build --platform linux/amd64 . -t docker.soramitsu.co.jp/build-tools/defectdojo-django:2.31.4 -t docker.soramitsu.co.jp/build-tools/defectdojo-django:latest -f Dockerfile.django
+docker buildx build --platform linux/amd64 . -t docker.soramitsu.co.jp/build-tools/defectdojo-django:2.33.1 -t docker.soramitsu.co.jp/build-tools/defectdojo-django:latest -f Dockerfile.django
 
-docker buildx build --platform linux/amd64 . -t docker.soramitsu.co.jp/build-tools/defectdojo-nginx:2.31.4 -t docker.soramitsu.co.jp/build-tools/defectdojo-nginx:latest -f Dockerfile.nginx
+docker buildx build --platform linux/amd64 . -t docker.soramitsu.co.jp/build-tools/defectdojo-nginx:2.33.1 -t docker.soramitsu.co.jp/build-tools/defectdojo-nginx:latest -f Dockerfile.nginx
 ```
