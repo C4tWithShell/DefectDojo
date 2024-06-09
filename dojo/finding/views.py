@@ -2771,6 +2771,7 @@ def finding_bulk_update_all(request, pid=None):
                             find.active = form.cleaned_data["active"]
                             find.verified = form.cleaned_data["verified"]
                             find.false_p = form.cleaned_data["false_p"]
+                            find.duplicate = form.cleaned_data["duplicate"]
                             find.out_of_scope = form.cleaned_data["out_of_scope"]
                             find.is_mitigated = form.cleaned_data["is_mitigated"]
                             find.last_reviewed = timezone.now()
@@ -2809,6 +2810,11 @@ def finding_bulk_update_all(request, pid=None):
                 if form.cleaned_data["date"]:
                     for finding in finds:
                         finding.date = form.cleaned_data["date"]
+                        finding.save_no_options()
+
+                if form.cleaned_data["duplicate"]:
+                    for finding in finds:
+                        finding.date = form.cleaned_data["duplicate"]
                         finding.save_no_options()
 
                 if form.cleaned_data["planned_remediation_date"]:

@@ -164,6 +164,10 @@
                                             <span>{% trans "False Positive" %}</span>
                                         </label>
                                         <label style="font-size: 80%; font-weight: normal; display: block">
+                                            <input id="id_bulk_duplicate" name="duplicate" type="checkbox" disabled/>
+                                            <span>{% trans "Duplicate" %}</span>
+                                        </label>
+                                        <label style="font-size: 80%; font-weight: normal; display: block">
                                             <input id="id_bulk_out_of_scope"
                                                 name="out_of_scope"
                                                 type="checkbox"
@@ -894,6 +898,7 @@
                 $('#bulk_edit_menu #id_bulk_active').prop('disabled', !checked);
                 $('#bulk_edit_menu #id_bulk_verified').prop('disabled', !checked);
                 $('#bulk_edit_menu #id_bulk_false_p').prop('disabled', !checked);
+                $('#bulk_edit_menu #id_bulk_duplicate').prop('disabled', !checked);
                 $('#bulk_edit_menu #id_bulk_out_of_scope').prop('disabled', !checked);
                 $('#bulk_edit_menu #id_bulk_is_mitigated').prop('disabled', !checked);
                 $('#bulk_edit_menu #id_bulk_under_review').prop('disabled', !checked);
@@ -902,6 +907,7 @@
             $('#bulk_edit_menu #id_bulk_active').on("click", function (e){
                 var checked = this.checked;
                 $('#bulk_edit_menu #id_bulk_false_p').prop('checked', false);
+                $('#bulk_edit_menu #id_bulk_duplicate').prop('checked', false);
                 $('#bulk_edit_menu #id_bulk_is_mitigated').prop('checked', false);
                 $('#bulk_edit_menu #id_bulk_out_of_scope').prop('checked', false);
             })
@@ -909,6 +915,7 @@
             $('#bulk_edit_menu #id_bulk_verified').on("click", function (e){
                 var checked = this.checked;
                 $('#bulk_edit_menu #id_bulk_false_p').prop('checked', false);
+                $('#bulk_edit_menu #id_bulk_duplicate').prop('checked', false);
                 $('#bulk_edit_menu #id_bulk_out_of_scope').prop('checked', false);
                 $('#bulk_edit_menu #id_bulk_under_review').prop('checked', false);
             })
@@ -918,6 +925,7 @@
                 $('#bulk_edit_menu #id_bulk_active').prop('checked', false);
                 $('#bulk_edit_menu #id_bulk_under_review').prop('checked', false);
                 $('#bulk_edit_menu #id_bulk_false_p').prop('checked', false);
+                $('#bulk_edit_menu #id_bulk_duplicate').prop('checked', false);
                 $('#bulk_edit_menu #id_bulk_out_of_scope').prop('checked', false);
             })
 
@@ -925,8 +933,19 @@
                 var checked = this.checked;
                 $('#bulk_edit_menu #id_bulk_active').prop('checked', false);
                 $('#bulk_edit_menu #id_bulk_verified').prop('checked', false);
+                $('#bulk_edit_menu #id_bulk_duplicate').prop('checked', false);
                 $('#bulk_edit_menu #id_bulk_out_of_scope').prop('checked', false);
                 $('#bulk_edit_menu #id_bulk_is_mitigated').prop('checked', checked);
+                $('#bulk_edit_menu #id_bulk_under_review').prop('checked', false);
+            })
+
+            $('#bulk_edit_menu #id_bulk_duplicate').on("click", function (e){
+                var checked = this.checked;
+                $('#bulk_edit_menu #id_bulk_active').prop('checked', false);
+                $('#bulk_edit_menu #id_bulk_verified').prop('checked', false);
+                $('#bulk_edit_menu #id_bulk_false_p').prop('checked', false);
+                $('#bulk_edit_menu #id_bulk_out_of_scope').prop('checked', false);
+                $('#bulk_edit_menu #id_bulk_is_mitigated').prop('checked', false);
                 $('#bulk_edit_menu #id_bulk_under_review').prop('checked', false);
             })
 
@@ -935,6 +954,7 @@
                 $('#bulk_edit_menu #id_bulk_active').prop('checked', false);
                 $('#bulk_edit_menu #id_bulk_verified').prop('checked', false);
                 $('#bulk_edit_menu #id_bulk_false_p').prop('checked', false);
+                $('#bulk_edit_menu #id_bulk_duplicate').prop('checked', false);
                 $('#bulk_edit_menu #id_bulk_under_review').prop('checked', false);
                 $('#bulk_edit_menu #id_bulk_is_mitigated').prop('checked', checked);
             })
@@ -946,6 +966,7 @@
                 }
                 $('#bulk_edit_menu #id_bulk_verified').prop('checked', false);
                 $('#bulk_edit_menu #id_bulk_false_p').prop('checked', false);
+                $('#bulk_edit_menu #id_bulk_duplicate').prop('checked', false);
                 $('#bulk_edit_menu #id_bulk_out_of_scope').prop('checked', false);
                 $('#bulk_edit_menu #id_bulk_is_mitigated').prop('checked', false);
                 $('#bulk_edit_menu #id_bulk_risk_accept').prop('checked', false);
