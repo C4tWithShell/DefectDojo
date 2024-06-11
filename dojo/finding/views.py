@@ -2814,8 +2814,10 @@ def finding_bulk_update_all(request, pid=None):
 
                 if form.cleaned_data["duplicate"]:
                     for finding in finds:
-                        finding.date = form.cleaned_data["duplicate"]
-                        finding.save_no_options()
+                        finding.duplicate = form.cleaned_data["duplicate"]
+                        finding.active = False
+                        finding.verified = False
+                        finding.save(dedupe_option=False)
 
                 if form.cleaned_data["planned_remediation_date"]:
                     for finding in finds:
