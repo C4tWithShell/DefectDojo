@@ -514,6 +514,11 @@ class System_Settings(models.Model):
         blank=False,
         verbose_name=_('Enable Finding Groups'),
         help_text=_("With this setting turned off, the Finding Groups will be disabled."))
+    enable_ui_table_based_searching = models.BooleanField(
+        default=True,
+        blank=False,
+        verbose_name=_('Enable UI Table Based Filtering/Sorting'),
+        help_text=_("With this setting enabled, table headings will contain sort buttons for the current page of data in addition to sorting buttons that consider data from all pages."))
     enable_calendar = models.BooleanField(
         default=True,
         blank=False,
@@ -3614,21 +3619,21 @@ class Risk_Acceptance(models.Model):
     TREATMENT_FIX = 'F'
     TREATMENT_TRANSFER = 'T'
 
-    TREATMENT_CHOICES = [
-        (TREATMENT_ACCEPT, 'Accept (The risk is acknowledged, yet remains)'),
-        (TREATMENT_AVOID, 'Avoid (Do not engage with whatever creates the risk)'),
-        (TREATMENT_MITIGATE, 'Mitigate (The risk still exists, yet compensating controls make it less of a threat)'),
-        (TREATMENT_FIX, 'Fix (The risk is eradicated)'),
-        (TREATMENT_TRANSFER, 'Transfer (The risk is transferred to a 3rd party)'),
-    ]
-
     TREATMENT_TRANSLATIONS = {
-        'A': 'Accept (The risk is acknowledged, yet remains)',
-        'V': 'Avoid (Do not engage with whatever creates the risk)',
-        'M': 'Mitigate (The risk still exists, yet compensating controls make it less of a threat)',
-        'F': 'Fix (The risk is eradicated)',
-        'T': 'Transfer (The risk is transferred to a 3rd party)',
+        TREATMENT_ACCEPT: _('Accept (The risk is acknowledged, yet remains)'),
+        TREATMENT_AVOID: _('Avoid (Do not engage with whatever creates the risk)'),
+        TREATMENT_MITIGATE: _('Mitigate (The risk still exists, yet compensating controls make it less of a threat)'),
+        TREATMENT_FIX: _('Fix (The risk is eradicated)'),
+        TREATMENT_TRANSFER: _('Transfer (The risk is transferred to a 3rd party)'),
     }
+
+    TREATMENT_CHOICES = [
+        (TREATMENT_ACCEPT, TREATMENT_TRANSLATIONS[TREATMENT_ACCEPT]),
+        (TREATMENT_AVOID, TREATMENT_TRANSLATIONS[TREATMENT_AVOID]),
+        (TREATMENT_MITIGATE, TREATMENT_TRANSLATIONS[TREATMENT_MITIGATE]),
+        (TREATMENT_FIX, TREATMENT_TRANSLATIONS[TREATMENT_FIX]),
+        (TREATMENT_TRANSFER, TREATMENT_TRANSLATIONS[TREATMENT_TRANSFER]),
+    ]
 
     name = models.CharField(max_length=300, null=False, blank=False, help_text=_("Descriptive name which in the future may also be used to group risk acceptances together across engagements and products"))
 
