@@ -98,9 +98,6 @@ def delete(eng, risk_acceptance):
     eng.risk_acceptance.remove(risk_acceptance)
     eng.save()
 
-    for note in risk_acceptance.notes.all():
-        note.delete()
-
     risk_acceptance.path.delete()
     risk_acceptance.delete()
 
@@ -272,7 +269,7 @@ def prefetch_for_expiration(risk_acceptances):
 
 def simple_risk_accept(finding, perform_save=True):
     if not finding.test.engagement.product.enable_simple_risk_acceptance:
-        raise PermissionDenied()
+        raise PermissionDenied
 
     logger.debug('accepting finding %i:%s', finding.id, finding)
     finding.risk_accepted = True

@@ -24,7 +24,7 @@ from dojo.authorization.authorization import user_has_configuration_permission
 from dojo.forms import DeleteJIRAInstanceForm, ExpressJIRAForm, JIRAForm
 from dojo.models import JIRA_Instance, JIRA_Issue, Notes, System_Settings, User
 from dojo.notifications.helper import create_notification
-from dojo.utils import add_breadcrumb, add_error_message_to_response
+from dojo.utils import add_breadcrumb, add_error_message_to_response, get_setting
 
 logger = logging.getLogger(__name__)
 
@@ -241,8 +241,10 @@ def check_for_and_create_comment(parsed_json):
         findings = [jissue.finding]
         create_notification(event='jira_comment', title=f'JIRA incoming comment - {jissue.finding}', finding=jissue.finding, url=reverse("view_finding", args=(jissue.finding.id,)), icon='check')
     elif jissue.finding_group:
-        findings = [jissue.finding_group.findings.all()]
-        create_notification(event='jira_comment', title=f'JIRA incoming comment - {jissue.finding}', finding=jissue.finding, url=reverse("view_finding_group", args=(jissue.finding_group.id,)), icon='check')
+        findings = jissue.finding_group.findings.all()
+        first_finding_group = findings.first()
+        if first_finding_group:
+            create_notification(event='jira_comment', title=f'JIRA incoming comment - {jissue.finding_group}', finding=first_finding_group, url=reverse("view_finding_group", args=(jissue.finding_group.id,)), icon='check')
     elif jissue.engagement:
         return webhook_responser_handler("debug", "Comment for engagement ignored")
     else:
@@ -513,9 +515,12 @@ class DeleteJiraView(View):
             raise PermissionDenied
         jira_instance = get_object_or_404(JIRA_Instance, pk=tid)
         form = self.get_form_class()(instance=jira_instance)
-        collector = NestedObjects(using=DEFAULT_DB_ALIAS)
-        collector.collect([jira_instance])
-        rels = collector.nested()
+        rels = ["Previewing the relationships has been disabled.", ""]
+        display_preview = get_setting("DELETE_PREVIEW")
+        if display_preview:
+            collector = NestedObjects(using=DEFAULT_DB_ALIAS)
+            collector.collect([jira_instance])
+            rels = collector.nested()
 
         add_breadcrumb(title="Delete", top_level=False, request=request)
         return render(request, self.get_template(), {
@@ -547,9 +552,13 @@ class DeleteJiraView(View):
                     return HttpResponseRedirect(reverse('jira'))
                 except Exception as e:
                     add_error_message_to_response(f'Unable to delete JIRA Instance, probably because it is used by JIRA Issues: {str(e)}')
-        collector = NestedObjects(using=DEFAULT_DB_ALIAS)
-        collector.collect([jira_instance])
-        rels = collector.nested()
+
+        rels = ["Previewing the relationships has been disabled.", ""]
+        display_preview = get_setting("DELETE_PREVIEW")
+        if display_preview:
+            collector = NestedObjects(using=DEFAULT_DB_ALIAS)
+            collector.collect([jira_instance])
+            rels = collector.nested()
 
         add_breadcrumb(title="Delete", top_level=False, request=request)
         return render(request, self.get_template(), {
