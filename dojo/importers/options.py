@@ -1,8 +1,8 @@
 import logging
 from datetime import datetime
 from functools import wraps
-from pprint import pprint as pp
-from typing import Any, Callable, List
+from pprint import pformat as pp
+from typing import Any, Callable, List, Optional
 
 from django.contrib.auth.models import User
 from django.db.models import Model
@@ -83,11 +83,10 @@ class ImporterOptions:
         An added hook for loading additional options
         to be used by children classes for the BaseImporter
         """
-        pass
 
     def log_translation(
         self,
-        header_message: str = None,
+        header_message: Optional[str] = None,
     ):
         if header_message is not None:
             logger.debug(header_message)
@@ -181,6 +180,7 @@ class ImporterOptions:
         self,
         field_name: str,
         expected_types: List[Callable] = [],
+        *,
         required: bool = False,
         default: Any = None,
         **kwargs: dict,
